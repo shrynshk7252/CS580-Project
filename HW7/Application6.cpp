@@ -76,8 +76,8 @@ int Application6::Initialize()
 	/* 
 	 * initialize the display and the renderer 
 	 */ 
-	m_nWidth = 256;		// frame buffer and display width
-	m_nHeight = 256;    // frame buffer and display height
+	m_nWidth = 512;		// frame buffer and display width
+	m_nHeight = 512;    // frame buffer and display height
 
 	/*
 	 * Set the sample offsets to pass to the render
@@ -143,12 +143,12 @@ int Application6::Initialize()
 		//camera.worldup[Y] = 1.0;
 		//camera.worldup[Z] = 0.0;
 
-		camera.position[X] = 0.001;
+		camera.position[X] = 0.0;
 		camera.position[Y] = 5.0;
-		camera.position[Z] = -0.01;
+		camera.position[Z] = -1.0;
 
 		camera.lookat[X] = 0.0;
-		camera.lookat[Y] = 0.0;
+		camera.lookat[Y] = 5.0;
 		camera.lookat[Z] = 50.0;
 
 		camera.worldup[X] = 0.0;
