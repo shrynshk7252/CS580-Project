@@ -6,11 +6,56 @@
 #define R 0
 #define I 1
 
-GzColor	*image=NULL;
+GzColor	*image = NULL;
+GzColor *MipMap[10];
 int xs, ys;
 int reset = 1;
 float length(GzCoord a);
 float fisqrt(float num);
+
+void tri_mm(GzColor *Image, int xs, int ys, int level)
+{
+
+	if (level == 0)
+	{
+		MipMap[level] = (GzColor*)malloc(sizeof(GzColor)*(xs + 1)*(ys + 1));
+		MipMap[level] = Image;
+		tri_mm(MipMap[level], xs / 2, ys / 2, ++level);
+	}
+	else
+	{
+		MipMap[level] = (GzColor*)malloc(sizeof(GzColor)*(xs + 1)*(ys + 1));
+		//FILE			*fd;
+		//fd = fopen("texture333333", "w+");
+		for (int i = 0; i < xs; i++)
+		{
+			for (int j = 0; j < ys; j++)
+			{
+				MipMap[level][i + (j*xs)][RED] = (		MipMap[level - 1][2 * i + (2 * j * 2 * xs)][RED] +
+														MipMap[level - 1][(2 * i + 1) + (2 * j * 2 * xs)][RED] +
+														MipMap[level - 1][2 * i + ((2 * j + 1) * 2 * xs)][RED] +
+														MipMap[level - 1][(2 * i + 1) + ((2 * j + 1) * 2 * xs)][RED]) / 4;
+
+				MipMap[level][i + (j*xs)][GREEN] = (	MipMap[level - 1][2 * i + (2 * j * 2 * xs)][GREEN] +
+														MipMap[level - 1][(2 * i + 1) + (2 * j * 2 * xs)][GREEN] +
+														MipMap[level - 1][2 * i + ((2 * j + 1) * 2 * xs)][GREEN] +
+														MipMap[level - 1][(2 * i + 1) + ((2 * j + 1) * 2 * xs)][GREEN]) / 4;
+
+				MipMap[level][i + (j*xs)][BLUE] = (		MipMap[level - 1][2 * i + (2 * j * 2 * xs)][BLUE] +
+														MipMap[level - 1][(2 * i + 1) + (2 * j * 2 * xs)][BLUE] +
+														MipMap[level - 1][2 * i + ((2 * j + 1) * 2 * xs)][BLUE] +
+														MipMap[level - 1][(2 * i + 1) + ((2 * j + 1) * 2 * xs)][BLUE]) / 4;
+				//fprintf(fd, "%f %f %f", MipMap[level][i + (j*xs)][RED], MipMap[level][i + (j*xs)][GREEN], MipMap[level][i + (j*xs)][BLUE]);
+				
+			}
+		}
+		//fclose(fd);
+		if (xs == 1)
+			return;
+		tri_mm(MipMap[level], xs / 2, ys / 2, ++level);
+	}
+
+}
 
 /* Image texture function */
 int tex_fun(float u, float v, GzColor color)
@@ -22,15 +67,15 @@ int tex_fun(float u, float v, GzColor color)
 	FILE			*fd;
 
 	if (reset) {          /* open and load texture file */
-		fd = fopen ("texture", "rb");
+		fd = fopen("texture", "rb");
 		if (fd == NULL) {
-			fprintf (stderr, "texture file not found\n");
+			fprintf(stderr, "texture file not found\n");
 			exit(-1);
 		}
-		fscanf (fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
-		image = (GzColor*)malloc(sizeof(GzColor)*(xs+1)*(ys+1));
+		fscanf(fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
+		image = (GzColor*)malloc(sizeof(GzColor)*(xs + 1)*(ys + 1));
 		if (image == NULL) {
-			fprintf (stderr, "malloc for texture image failed\n");
+			fprintf(stderr, "malloc for texture image failed\n");
 			exit(-1);
 		}
 
@@ -42,6 +87,7 @@ int tex_fun(float u, float v, GzColor color)
 		}
 
 		reset = 0;          /* init is done */
+		tri_mm(image, xs, ys, 0);
 		fclose(fd);
 	}
 
@@ -57,9 +103,9 @@ int tex_fun(float u, float v, GzColor color)
 
 	// Get the coordinate of the surrounding int texels 
 	int A = floor(s) + (floor(t) * xs);
-	int B =  ceil(s) + (floor(t) * xs);
-	int C =  ceil(s) + ( ceil(t) * xs);
-	int D = floor(s) + ( ceil(t) * xs);
+	int B = ceil(s) + (floor(t) * xs);
+	int C = ceil(s) + (ceil(t) * xs);
+	int D = floor(s) + (ceil(t) * xs);
 
 	//The amount of influence each texel has on the given u, v
 	float Ai = (1 - u) * (1 - v);
@@ -68,10 +114,14 @@ int tex_fun(float u, float v, GzColor color)
 	float Di = (1 - u) * v;
 
 	/* set color to interpolated GzColor value and return */
-	color[RED]	=	Ci * image[C][RED]	+ Di * image[D][RED]	+ Bi * image[B][RED]	+ Ai * image[A][RED];
-	color[GREEN]=	Ci * image[C][GREEN]+ Di * image[D][GREEN]	+ Bi * image[B][GREEN]	+ Ai * image[A][GREEN];
-	color[BLUE]	=	Ci * image[C][BLUE]	+ Di * image[D][BLUE]	+ Bi * image[B][BLUE]	+ Ai * image[A][BLUE];
+	color[RED] = Ci * image[C][RED] + Di * image[D][RED] + Bi * image[B][RED] + Ai * image[A][RED];
+	color[GREEN] = Ci * image[C][GREEN] + Di * image[D][GREEN] + Bi * image[B][GREEN] + Ai * image[A][GREEN];
+	color[BLUE] = Ci * image[C][BLUE] + Di * image[D][BLUE] + Bi * image[B][BLUE] + Ai * image[A][BLUE];
 }
+
+
+
+
 
 /* Procedural texture function */
 int ptex_fun(float u, float v, GzColor color)
@@ -82,7 +132,7 @@ int ptex_fun(float u, float v, GzColor color)
 	float c[2] = { 0, 0 };
 	c[R] = -0.601;
 	c[I] = 0.479;
-	
+
 	float z[2] = { 0, 0 };
 	z[R] = u;
 	z[I] = v - 1.0;
@@ -90,9 +140,9 @@ int ptex_fun(float u, float v, GzColor color)
 	int i = 0;
 	while (i < iterations){
 		//Z^2
-		float zr = z[R]*z[R] - z[I]*z[I] + c[R];
-		float zi = 2 * z[R]*z[I] + c[I];
-		if (z[R]*z[R] + z[I]*z[I] > 4){
+		float zr = z[R] * z[R] - z[I] * z[I] + c[R];
+		float zi = 2 * z[R] * z[I] + c[I];
+		if (z[R] * z[R] + z[I] * z[I] > 4){
 			break;
 		}
 		z[R] = zr;
@@ -113,8 +163,7 @@ int ptex_fun(float u, float v, GzColor color)
 /* Free texture memory */
 int GzFreeTexture()
 {
-	if(image!=NULL)
+	if (image != NULL)
 		free(image);
 	return GZ_SUCCESS;
 }
-
