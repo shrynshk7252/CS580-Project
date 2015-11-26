@@ -395,7 +395,7 @@ int GzPushMatrix(GzRender *render, GzMatrix	matrix)
 	}
 
 	//Normalize the matrix
-	float lenSquared = matrix[0][X]*matrix[0][X] + matrix[0][Y]*matrix[0][Y] + matrix[0][Z]*matrix[0][Z];
+	float lenSquared = matrix[0][X]*matrix[0][X] + matrix[0][Y]*matrix[0][Y] + matrix[0][Z]*matrix[0][Z] + matrix[0][3]*matrix[0][3];
 	float kInv = fisqrt(lenSquared);
 	GzMatrix normMatrix, identityMatrix;
 	for (int i = 0; i < 4; i++){
@@ -655,7 +655,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 		if (xformTri[0][Y] == xformTri[1][Y]){
 
 			//Going Clockwise, so swap if xformTri[0][X] > xformTri[1][X]
-			if (xformTri[0][X] > xformTri[1][X]){
+			if (xformTri[0][X] < xformTri[1][X]){
 				swap3(0, 1, xformTri);
 				swap3(0, 1, xformNs);
 				swap2(0, 1, uvTexCoord);
@@ -664,7 +664,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 		//Bottom
 		else if (xformTri[1][Y] == xformTri[2][Y]){
 			//Going Clockwise, so swap if xformTri[1][X] < xformTri[2][X]
-			if (xformTri[1][X] < xformTri[2][X]){
+			if (xformTri[1][X] > xformTri[2][X]){
 				swap3(1, 2, xformTri);
 				swap3(1, 2, xformNs);
 				swap2(1, 2, uvTexCoord);
