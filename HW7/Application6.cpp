@@ -145,7 +145,7 @@ int Application6::Initialize()
 
 		camera.position[X] = 0.0;
 		camera.position[Y] = 5.0;
-		camera.position[Z] = -1.0;
+		camera.position[Z] = -40.0;
 
 		camera.lookat[X] = 0.0;
 		camera.lookat[Y] = 5.0;
@@ -309,7 +309,7 @@ int Application6::Render()
 		-One to the right of the z axis
 		
 	*/
-	int numPolys = 5;
+	int numPolys = 2;
 	float numPolysHalved = float(numPolys) / 2.0f;
 	for (float i = -numPolysHalved; i < numPolysHalved; i++){
 		for (int j = 0; j < numPolys; j++){

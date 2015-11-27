@@ -16,6 +16,26 @@ float	dotProduct(GzCoord v1, GzCoord v2);
 int		shadingEq(GzRender* render, GzColor color, GzCoord norm, bool gouraudTexture);
 float	triArea(GzCoord A, GzCoord B, GzCoord C);
 
+void EdgeCalculate(GzCoord* ptr, GzCoord* edge)
+{
+	//Calculate the edge vectors
+	edge[0][0] = ptr[1][0] - ptr[0][0];
+	edge[0][1] = ptr[1][1] - ptr[0][1];
+	edge[0][2] = ptr[1][2] - ptr[0][2];
+
+	edge[1][0] = ptr[2][0] - ptr[1][0];
+	edge[1][1] = ptr[2][1] - ptr[1][1];
+	edge[1][2] = ptr[2][2] - ptr[1][2];
+}
+
+void NormCalculate(float* norm, GzCoord* edge)
+{
+	//Cross Product of the Edges
+	norm[0] = (edge[0][Y] * edge[1][Z]) - (edge[1][Y] * edge[0][Z]);
+	norm[1] = -((edge[0][X] * edge[1][Z]) - (edge[1][X] * edge[0][Z]));
+	norm[2] = (edge[0][X] * edge[1][Y]) - (edge[1][X] * edge[0][Y]);
+}
+
 int GzRotXMat(float degree, GzMatrix mat)
 {
 // Create rotate matrix : rotate along x axis
@@ -561,7 +581,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 	GzMatrix topMat, topNMat;
 	memcpy(topMat, render->Ximage[render->matlevel], sizeof(GzMatrix));
 	memcpy(topNMat, render->Xnorm[render->matlevel], sizeof(GzMatrix));
-
+	GzTextureIndex* pTexCoord;
 	for (int i = 0; i < numParts; i++){
 		//Get the points
 		GzCoord* tri = (GzCoord*)valueList[i];
@@ -612,7 +632,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 			normalizeVector(xformNs[2]);
 		}
 		else if (nameList[i] == GZ_TEXTURE_INDEX){
-			GzTextureIndex* pTexCoord = (GzTextureIndex*)valueList[i];
+			pTexCoord = (GzTextureIndex*)valueList[i];
 
 			for (int j = 0; j < 3; j++){
 				// xform uv coords into perspective space
@@ -743,6 +763,71 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 
 		float iZ;
 
+
+		//u.v Interpolation by LEE for mipmaps - Begin Trial
+		GzCoord *ptrU = new GzCoord[3], *ptrV = new GzCoord[3];
+		float normU[3], normV[3], DU, DV;
+		float k1, k2, k3, k4, k5, k6;
+		GzCoord edge[2];
+		if (render->tex_fun != NULL)
+		{
+			//u Interpolation
+			ptrU[0][0] = xformTri[0][0];
+			ptrU[0][1] = xformTri[0][1];
+			ptrU[0][2] = uvTexCoord[0][0];
+
+			ptrU[1][0] = xformTri[1][0];
+			ptrU[1][1] = xformTri[1][1];
+			ptrU[1][2] = uvTexCoord[1][0];
+
+			ptrU[2][0] = xformTri[2][0];
+			ptrU[2][1] = xformTri[2][1];
+			ptrU[2][2] = uvTexCoord[2][0];
+
+			//v Interpolation
+			ptrV[0][0] = xformTri[0][0];
+			ptrV[0][1] = xformTri[0][1];
+			ptrV[0][2] = uvTexCoord[0][1];
+
+			ptrV[1][0] = xformTri[1][0];
+			ptrV[1][1] = xformTri[1][1];
+			ptrV[1][2] = uvTexCoord[1][1];
+
+			ptrV[2][0] = xformTri[2][0];
+			ptrV[2][1] = xformTri[2][1];
+			ptrV[2][2] = uvTexCoord[2][1];
+
+			//U Interpolation
+			EdgeCalculate(ptrU, &edge[0]);
+
+			NormCalculate(&normU[0], &edge[0]);
+
+			//Calculate D
+			DU = -((normU[0] * ptrU[1][0]) + (normU[1] * ptrU[1][1]) + (normU[2] * ptrU[1][2]));
+
+			//V Interpolation
+			EdgeCalculate(ptrV, &edge[0]);
+
+			NormCalculate(&normV[0], &edge[0]);
+
+			//Calculate D
+			DV = -((normV[0] * ptrV[1][0]) + (normV[1] * ptrV[1][1]) + (normV[2] * ptrV[1][2]));
+
+			k1 = ((-normU[0] / normU[2]) * (-B / C)) - ((-normU[1] / normU[2])*(-A / C));
+			k2 = ((-normV[0] / normV[2]) * (-B / C)) - ((-normV[1] / normV[2])*(-A / C));
+			k3 = ((-normU[0] / normU[2]) * (-D / C)) - ((-DU / normU[2])*(-A / C));
+			k4 = ((-normV[0] / normV[2]) * (-D / C)) - ((-DV / normV[2])*(-A / C));
+			k5 = ((-normU[1] / normU[2]) * (-D / C)) - ((-DU / normU[2])*(-B / C));
+			k6 = ((-normV[1] / normV[2]) * (-D / C)) - ((-DV / normV[2])*(-B / C));
+
+		}
+		//End Trial
+
+
+
+
+
+
 		//Check the pixels within the bounding box
 
 		for (int i = boxLeft; i < boxRight; i++){
@@ -759,7 +844,6 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 				//Ax + By + Cz + D = 0
 				//z = -(Ax + By + D) / C
 				iZ = -(A*i + B*j + D) / C;
-
 				//Get current Z and color information at this pixel 
 				GzIntensity r, g, b, a;
 				GzCoord pix = { i, j, 0 };
@@ -768,6 +852,18 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 
 				//If iZ <= current z and not negative, the point could potentially be drawn
 				if (iZ <= z && iZ > 0){
+					float ux, uy, vx, vy;
+					if (render->tex_fun != NULL){
+						ux = (k3 + (k1*j)) / (iZ*iZ);
+						uy = (k5 - (k1*i)) / (iZ*iZ);
+
+						vx = (k4 + (k2*j)) / (iZ*iZ);
+						vy = (k6 - (k2*i)) / (iZ*iZ);
+					}
+					float LOD;
+					LOD = max(abs(ux), abs(uy), abs(vx), abs(vy));
+					int level;
+					level = floor(log2(LOD));
 					//Compute LEE
 					//E(x,y) = dY(x-X) - dX(y-Y)
 					float dY, dX;
@@ -797,6 +893,8 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 						float a0 = triArea(pix, xformTri[1], xformTri[2]);
 						float a1 = triArea(xformTri[0], pix, xformTri[2]);
 						float a2 = triArea(xformTri[0], xformTri[1], pix);
+
+						//MipMap Point Based Selection
 
 						//Interpolate uv
 						GzTextureIndex uv;
