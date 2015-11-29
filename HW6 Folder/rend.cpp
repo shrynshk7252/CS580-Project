@@ -830,16 +830,92 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList, GzPointer	*
 
 		maxY = AAOffset[2][1];					//Maximum and Minimum X,Y Values
 		minY = AAOffset[0][1];
-
+		
 		maxX = AAOffset[0][0];
 		minX = AAOffset[0][0];
+		int max = 0, min = 0;
 		for (int i = 0; i < 3; i++)
 		{
 			if (AAOffset[i][0] > maxX)
+			{
 				maxX = AAOffset[i][0];
+				max = i;
+			}
 			if (AAOffset[i][0] < minX)
+			{
 				minX = AAOffset[i][0];
+				min = i;
+			}
 		}
+
+		//MIPMAPS Method 1 YO!
+		//float maxYU = uv[2][0];					
+		//float maxYV = uv[2][1];
+		//
+		//float minYU = uv[0][0];
+		//float minYV = uv[0][1];
+		//
+		//float maxXU = uv[max][0];
+		//float maxXV = uv[max][1];
+
+		//float minXU = uv[min][0];
+		//float minXV = uv[min][1];
+
+		//float xdist = abs(AAOffset[max][0] - AAOffset[min][0]);
+		//float ydist = abs(AAOffset[max][0] - AAOffset[min][0]);
+		//float Vdist = abs(maxYV - minYV);
+		//float Udist = abs(maxXU - minXU);
+
+		//float final[10];
+		//int level = 0;
+		//do
+		//{
+		//	float a = ((Udist / xdist)*(Udist / xdist));
+		//	float b = ((Vdist / ydist)*(Vdist / ydist));
+		//	float x = max(a,b);//(Udist * Vdist/ (xdist*ydist));
+		//	final[level] = 0.5 * floor(log2(x));
+		//	level++;
+		//} while (level < 10);
+		//end
+
+		//MIPMAPS Method 2 YO!
+		/*float maxYU = uv[2][0];					
+		float maxYV = uv[2][1];
+		float maxYZ = AAOffset[2][3];
+
+		float minYU = uv[0][0];
+		float minYV = uv[0][1];
+		float minYZ = AAOffset[0][3];
+		
+		float maxXU = uv[max][0];
+		float maxXV = uv[max][1];
+		float maxXZ = AAOffset[max][3];
+
+		float minXU = uv[min][0];
+		float minXV = uv[min][1];
+		float minXZ = AAOffset[min][3];
+
+		float xdist = abs(AAOffset[max][0] - AAOffset[min][0]);
+		float ydist = abs(AAOffset[max][0] - AAOffset[min][0]);
+
+		float UdistY = abs(maxYU - minYU);
+		float UYbyZ = UdistY / abs(maxYZ - minYZ);
+
+		float VdistY = abs(maxYV - minYV);
+		float VYbyZ = VdistY / abs(maxYZ-minYZ);
+
+		float UdistX = abs(maxXU - minXU);
+		float UXbyZ = UdistX / abs(maxXZ - minXZ);
+
+		float VdistX = abs(maxXV - minXV);
+		float VXbyZ = UdistX / abs(maxXZ - minXZ);
+
+		float OnebyZX = 1 / abs(maxXZ - minXZ);
+		float OnebyZY = 1 / abs(maxYZ - minYZ);*/
+
+		
+
+		//end
 
 		float L02x = AAOffset[2][X] - AAOffset[0][X];							//Calculating Plane equation (A,B,C,D)
 		float L02y = AAOffset[2][Y] - AAOffset[0][Y];
@@ -889,7 +965,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList, GzPointer	*
 		{
 			for (int i = minX; i < maxX; i++)
 			{
-
+				
 				float L20 = L20A * i + L20B * j + L20C;			//Calculating LEE Values
 				float L12 = L12A * i + L12B * j + L12C;
 				float L01 = L01A * i + L01B * j + L01C;
@@ -897,6 +973,9 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList, GzPointer	*
 				GzDepth z;
 				GzGetDisplay(render->AADisplays[AA], i, j, &r, &g, &b, &a, &z);
 				float interpz = (-A*i - B*j - D) / C;
+
+				
+
 				if (interpz < z)
 				{
 					GzCoord ThisPoint = { i, j, interpz };
@@ -913,6 +992,30 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList, GzPointer	*
 					float  offset = interpz / (INT_MAX - interpz);
 					FinalUV[0] = FinalUV[0] * (offset+1);
 					FinalUV[1] = FinalUV[1] * (offset+1);
+
+					//method 2 continues
+					/*float a, b, c, d, e, f, g;
+
+					a = ((UXbyZ / xdist)*(OnebyZY / ydist)) - ((OnebyZX / xdist)*(UYbyZ / ydist));
+					b = ((VXbyZ / xdist)*(OnebyZY / ydist)) - ((OnebyZX / xdist)*(VYbyZ / ydist));
+
+					c = ((UXbyZ / xdist)*(1 / interpz)) - ((OnebyZX / xdist)*(FinalUV[0] / interpz));
+					d = ((VXbyZ / xdist)*(1 / interpz)) - ((OnebyZX / xdist)*(FinalUV[1] / interpz));
+
+					e = ((UYbyZ / ydist)*(1 / interpz)) - ((OnebyZY / ydist)*(FinalUV[0] / interpz));
+					f = ((VYbyZ / ydist)*(1 / interpz)) - ((OnebyZY / ydist)*(FinalUV[1] / interpz));
+					
+					float UX = (c + (a*j)) / (interpz*interpz);
+					float VX = (d + (b*j)) / (interpz*interpz);
+
+					float UY = (e - (a*j)) / (interpz*interpz);
+					float VY = (f - (b*j)) / (interpz*interpz);
+
+					float LOD = max((sqrt((UX*UX) + (VX*VX))), (sqrt((UY*UY) + (VY*VY))));
+
+					if (LOD != 0)
+						int check = 0;*/
+					//end
 
 					GzColor textureColor;
 					if (render->tex_fun != NULL)
