@@ -24,7 +24,7 @@ static char THIS_FILE[]=__FILE__;
 
 #define SIZE 20
 
-extern int tex_fun(float u, float v, GzColor color); /* image texture function */
+extern int tex_fun(float u, float v, GzColor color, int level1,int level2, float level); /* image texture function */
 extern int ptex_fun(float u, float v, GzColor color); /* procedural texture function */
 
 void shade(GzCoord norm, GzCoord color);

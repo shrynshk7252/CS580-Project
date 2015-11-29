@@ -45,6 +45,50 @@ void tri_mm(GzColor *Image, int xs, int ys, int level)
 														MipMap[level - 1][(2 * i + 1) + (2 * j * 2 * xs)][BLUE] +
 														MipMap[level - 1][2 * i + ((2 * j + 1) * 2 * xs)][BLUE] +
 														MipMap[level - 1][(2 * i + 1) + ((2 * j + 1) * 2 * xs)][BLUE]) / 4;
+
+				/*if (level == 1)
+				{
+					MipMap[level][i + (j*xs)][RED] = 1;
+					MipMap[level][i + (j*xs)][GREEN] = 0;
+					MipMap[level][i + (j*xs)][BLUE] = 0;
+				}
+				else if (level == 2)
+				{
+					MipMap[level][i + (j*xs)][RED] = 0;
+					MipMap[level][i + (j*xs)][GREEN] = 1;
+					MipMap[level][i + (j*xs)][BLUE] = 0;
+				}
+				else if (level == 3)
+				{
+					MipMap[level][i + (j*xs)][RED] = 0;
+					MipMap[level][i + (j*xs)][GREEN] = 0;
+					MipMap[level][i + (j*xs)][BLUE] = 1;
+				}
+				else if (level == 4)
+				{
+					MipMap[level][i + (j*xs)][RED] = 1;
+					MipMap[level][i + (j*xs)][GREEN] = 0;
+					MipMap[level][i + (j*xs)][BLUE] = 1;
+				}
+				else if (level == 5)
+				{
+					MipMap[level][i + (j*xs)][RED] = 0;
+					MipMap[level][i + (j*xs)][GREEN] = 1;
+					MipMap[level][i + (j*xs)][BLUE] = 1;
+				}
+				else if (level == 6)
+				{
+					MipMap[level][i + (j*xs)][RED] = 1;
+					MipMap[level][i + (j*xs)][GREEN] = 1;
+					MipMap[level][i + (j*xs)][BLUE] = 0;
+				}
+				else
+				{
+					MipMap[level][i + (j*xs)][RED] = 0;
+					MipMap[level][i + (j*xs)][GREEN] = 0;
+					MipMap[level][i + (j*xs)][BLUE] = 0;
+				}*/
+
 				//fprintf(fd, "%f %f %f", MipMap[level][i + (j*xs)][RED], MipMap[level][i + (j*xs)][GREEN], MipMap[level][i + (j*xs)][BLUE]);
 				
 			}
@@ -58,7 +102,7 @@ void tri_mm(GzColor *Image, int xs, int ys, int level)
 }
 
 /* Image texture function */
-int tex_fun(float u, float v, GzColor color)
+int tex_fun(float u, float v, GzColor color, int level1, int level2, float level)
 {
 	unsigned char	pixel[3];
 	unsigned char	dummy;
@@ -98,6 +142,7 @@ int tex_fun(float u, float v, GzColor color)
 	/* determine texture cell corner values and perform bilinear interpolation */
 	//Get the float value of the u, v coordinate of the texel mapped from
 	//   u, v coordinate of the pixel
+
 	float s = u * (xs - 1);
 	float t = v * (ys - 1);
 
@@ -113,10 +158,63 @@ int tex_fun(float u, float v, GzColor color)
 	float Ci = u * v;
 	float Di = (1 - u) * v;
 
+	//color[RED] = Ci * image[C][RED] + Di * image[D][RED] + Bi * image[B][RED] + Ai * image[A][RED];
+	//color[GREEN] = Ci * image[C][GREEN] + Di * image[D][GREEN] + Bi * image[B][GREEN] + Ai * image[A][GREEN];
+	//color[BLUE] = Ci * image[C][BLUE] + Di * image[D][BLUE] + Bi * image[B][BLUE] + Ai * image[A][BLUE];
+
+	xs = 512 / pow(2, (float)(level1));
+	ys = xs;
+	s = u * (xs - 1);
+	t = v * (ys - 1);
+
+	// Get the coordinate of the surrounding int texels 
+	A = floor(s) + (floor(t) * xs);
+	B = ceil(s) + (floor(t) * xs);
+	C = ceil(s) + (ceil(t) * xs);
+	D = floor(s) + (ceil(t) * xs);
+
+	//The amount of influence each texel has on the given u, v
+	Ai = (1 - u) * (1 - v);
+	Bi = u * (1 - v);
+	Ci = u * v;
+	Di = (1 - u) * v;
+	GzColor color1;
 	/* set color to interpolated GzColor value and return */
-	color[RED] = Ci * image[C][RED] + Di * image[D][RED] + Bi * image[B][RED] + Ai * image[A][RED];
-	color[GREEN] = Ci * image[C][GREEN] + Di * image[D][GREEN] + Bi * image[B][GREEN] + Ai * image[A][GREEN];
-	color[BLUE] = Ci * image[C][BLUE] + Di * image[D][BLUE] + Bi * image[B][BLUE] + Ai * image[A][BLUE];
+	color1[RED] = Ci * MipMap[level1][C][RED] + Di * MipMap[level1][D][RED] + Bi * MipMap[level1][B][RED] + Ai * MipMap[level1][A][RED];
+	color1[GREEN] = Ci * MipMap[level1][C][GREEN] + Di * MipMap[level1][D][GREEN] + Bi * MipMap[level1][B][GREEN] + Ai * MipMap[level1][A][GREEN];
+	color1[BLUE] = Ci * MipMap[level1][C][BLUE] + Di * MipMap[level1][D][BLUE] + Bi * MipMap[level1][B][BLUE] + Ai * MipMap[level1][A][BLUE];
+
+	xs = 512 / pow(2, (float)(level2) );
+	ys = xs;
+	s = u * (xs - 1);
+	t = v * (ys - 1);
+
+	// Get the coordinate of the surrounding int texels 
+	A = floor(s) + (floor(t) * xs);
+	B = ceil(s) + (floor(t) * xs);
+	C = ceil(s) + (ceil(t) * xs);
+	D = floor(s) + (ceil(t) * xs);
+
+	//The amount of influence each texel has on the given u, v
+	Ai = (1 - u) * (1 - v);
+	Bi = u * (1 - v);
+	Ci = u * v;
+	Di = (1 - u) * v;
+	GzColor color2;
+	/* set color to interpolated GzColor value and return */
+	color2[RED] = Ci * MipMap[level2][C][RED] + Di * MipMap[level2][D][RED] + Bi * MipMap[level2][B][RED] + Ai * MipMap[level2][A][RED];
+	color2[GREEN] = Ci * MipMap[level2][C][GREEN] + Di * MipMap[level2][D][GREEN] + Bi * MipMap[level2][B][GREEN] + Ai * MipMap[level2][A][GREEN];
+	color2[BLUE] = Ci * MipMap[level2][C][BLUE] + Di * MipMap[level2][D][BLUE] + Bi * MipMap[level2][B][BLUE] + Ai * MipMap[level2][A][BLUE];
+
+
+	float red = (1 - level)*color1[RED] + level*color2[RED];
+	float green = (1 - level)*color1[GREEN] + level*color2[GREEN];
+	float blue = (1 - level)*color1[BLUE] + level*color2[BLUE];
+
+	color[RED] = red;
+	color[GREEN] = green;
+	color[BLUE] = blue;
+	
 }
 
 

@@ -705,6 +705,60 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 		boxLeft = (int)floor(min(min(xformTri[0][X], xformTri[1][X]), xformTri[2][X]));
 		boxRight = (int)ceil(max(max(xformTri[0][X], xformTri[1][X]), xformTri[2][X]));
 
+
+		//mipmap
+		float ydist = xformTri[0][Y] - xformTri[2][Y];
+		
+		float UYMax = uvTexCoord[0][U];
+		float VYMax = uvTexCoord[0][V];
+
+		float UYMin = uvTexCoord[2][U];
+		float VYMin = uvTexCoord[2][V];
+
+		float maxX, minX, maxZ,minZ;
+		maxX = xformTri[0][X];
+		minX = xformTri[0][X];
+		maxZ = xformTri[0][Z];
+		minZ = xformTri[0][Z];
+		int min = 0;
+		int max = 0;
+
+		for (int p = 1; p < 3; p++)
+		{
+			if (maxX < xformTri[p][X])
+			{
+				maxX = xformTri[p][X];
+				max = p;
+			}
+			if (minX > xformTri[p][X])
+			{
+				minX = xformTri[p][X];
+				min = p;
+			}
+			if (maxZ < xformTri[p][Z])
+				maxZ = xformTri[p][Z];
+			if (minZ > xformTri[p][Z])
+				minZ = xformTri[p][Z];
+		}
+
+		float xdist = maxX-minX;
+
+		float UXMax = uvTexCoord[max][U];
+		float VXMax = uvTexCoord[max][V];
+
+		float UXMin = uvTexCoord[min][U];
+		float VXMin = uvTexCoord[min][V];
+
+		float dudx = (UXMax - UXMin) / xdist;
+		float dvdy = (VYMax - VYMin) / ydist;
+
+		float final = max((dvdy*dvdy), (dudx*dudx));
+
+		
+		
+		//end
+
+
 		//For interpolating Z later
 		//Ax + By + Cz + D = 0
 		//xformTri[0] cross xformTri[1] = (A, B, C)
@@ -763,6 +817,7 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 				//Get current Z and color information at this pixel 
 				GzIntensity r, g, b, a;
 				GzCoord pix = { i, j, 0 };
+
 				GzDepth z;
 				GzGetDisplay(render->display, i, j, &r, &g, &b, &a, &z);
 
@@ -807,10 +862,112 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 						uv[U] = ((a0*uvTexCoord[0][U] + a1*uvTexCoord[1][U] + a2*uvTexCoord[2][U]) / areaOfTri) * (Vz + 1);
 						uv[V] = ((a0*uvTexCoord[0][V] + a1*uvTexCoord[1][V] + a2*uvTexCoord[2][V]) / areaOfTri) * (Vz + 1);
 
+						//mipmap trilinear
+						float level = log2(final);
+						if (level<-21 && level >-30)
+							level = -21;
+						level += 21;
+						int level1 = floor(level);
+						if (level1 == 5)
+							int check = 0;
+						int level2 = ceil(level);
+						level -= level1;
+						float interp = iZ - minZ;
+						level = interp / (maxZ - minZ);
+						if (level1 < 0 || level2 > 9){
+							level1 = 8;
+							level2 = 9;
+						}
+
+						//mipmap anisotropic
+						GzCoord pix1 = { i - .5, j - .5, 0 };
+						GzCoord pix2 = { i - .5, j + .5, 0 };
+						GzCoord pix3 = { i + .5, j - .5, 0 };
+						GzCoord pix4 = { i + .5, j + .5, 0 };
+
+						//xy
+						float a11 = triArea(pix1, xformTri[1], xformTri[2]);
+						float a12 = triArea(xformTri[0], pix1, xformTri[2]);
+						float a13 = triArea(xformTri[0], xformTri[1], pix1);
+						
+						float z1 = (a11*xformTri[0][Z] + a12*xformTri[1][Z] + a13*xformTri[2][Z]) / areaOfTri;
+
+						if (z1 == INT_MAX){
+							z1--;
+						}
+						float Vz1 = z1 / (INT_MAX - z1);
+						GzTextureIndex uv1;
+
+						uv1[U] = ((a11*uvTexCoord[0][U] + a12*uvTexCoord[1][U] + a13*uvTexCoord[2][U]) / areaOfTri) * (Vz1 + 1);
+						uv1[V] = ((a11*uvTexCoord[0][V] + a12*uvTexCoord[1][V] + a13*uvTexCoord[2][V]) / areaOfTri) * (Vz1 + 1);
+
+						//x,y+1
+						float a21 = triArea(pix2, xformTri[1], xformTri[2]);
+						float a22 = triArea(xformTri[0], pix2, xformTri[2]);
+						float a23 = triArea(xformTri[0], xformTri[1], pix2);
+
+						float z2 = (a21*xformTri[0][Z] + a22*xformTri[1][Z] + a23*xformTri[2][Z]) / areaOfTri;
+
+						if (z2 == INT_MAX){
+							z2--;
+						}
+						float Vz2 = z2 / (INT_MAX - z2);
+						GzTextureIndex uv2;
+
+						uv2[U] = ((a21*uvTexCoord[0][U] + a22*uvTexCoord[1][U] + a23*uvTexCoord[2][U]) / areaOfTri) * (Vz2 + 1);
+						uv2[V] = ((a21*uvTexCoord[0][V] + a22*uvTexCoord[1][V] + a23*uvTexCoord[2][V]) / areaOfTri) * (Vz2 + 1);
+
+						//x+1,y
+						float a31 = triArea(pix3, xformTri[1], xformTri[2]);
+						float a32 = triArea(xformTri[0], pix3, xformTri[2]);
+						float a33 = triArea(xformTri[0], xformTri[1], pix3);
+
+						float z3 = (a31*xformTri[0][Z] + a32*xformTri[1][Z] + a33*xformTri[2][Z]) / areaOfTri;
+
+						if (z3 == INT_MAX){
+							z3--;
+						}
+						float Vz3 = z3 / (INT_MAX - z3);
+						GzTextureIndex uv3;
+
+						uv3[U] = ((a31*uvTexCoord[0][U] + a32*uvTexCoord[1][U] + a33*uvTexCoord[2][U]) / areaOfTri) * (Vz3 + 1);
+						uv3[V] = ((a31*uvTexCoord[0][V] + a32*uvTexCoord[1][V] + a33*uvTexCoord[2][V]) / areaOfTri) * (Vz3 + 1);
+
+						//x+1,y+1
+						float a41 = triArea(pix4, xformTri[1], xformTri[2]);
+						float a42 = triArea(xformTri[0], pix4, xformTri[2]);
+						float a43 = triArea(xformTri[0], xformTri[1], pix4);
+
+						float z4 = (a41*xformTri[0][Z] + a42*xformTri[1][Z] + a43*xformTri[2][Z]) / areaOfTri;
+
+						if (z4 == INT_MAX){
+							z4--;
+						}
+						float Vz4 = z4 / (INT_MAX - z4);
+						GzTextureIndex uv4;
+
+						uv4[U] = ((a41*uvTexCoord[0][U] + a42*uvTexCoord[1][U] + a43*uvTexCoord[2][U]) / areaOfTri) * (Vz4 + 1);
+						uv4[V] = ((a41*uvTexCoord[0][V] + a42*uvTexCoord[1][V] + a43*uvTexCoord[2][V]) / areaOfTri) * (Vz4 + 1);
+
+
+						float r1 = sqrt(pow(uv3[U] - uv1[U], 2) + pow(uv3[V] - uv1[V], 2));
+						float r2 = sqrt(pow(uv2[U] - uv1[U], 2) + pow(uv2[V] - uv1[V], 2));
+
+						float d1 = sqrt(pow(uv4[U] - uv1[U], 2) + pow(uv4[V] - uv1[V], 2));
+						float d2 = sqrt(pow(uv3[U] - uv2[U], 2) + pow(uv3[V] - uv2[V], 2));
+
+						float minaxis = min(r1, r2, d1, d2);
+
+						float levelai = floor(log2(minaxis));
+
+						//end
+
+
+
 						//Get the texture color at this uv
 						GzColor texColor;
 						if (render->tex_fun != NULL){
-							render->tex_fun(uv[U], uv[V], texColor);
+							render->tex_fun(uv[U], uv[V], texColor, level1, level2, level);
 						}
 
 						//Gouraud Shading - Interpolate Color
