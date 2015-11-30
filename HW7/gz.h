@@ -102,5 +102,5 @@ typedef struct  GzInput
 #define U       0		/* array indicies for texture coords */
 #define V       1
 
-#define	AAKERNEL_SIZE	6
+#define	AAKERNEL_SIZE	1
 #define WEIGHT	2		/* array index for the antialiasing sample's weight*/
