@@ -970,7 +970,10 @@ int GzPutTriangle(GzRender	*render, int numParts, GzToken *nameList,
 						{
 							int check = 1;
 						}
-						N = N;
+						int val = 64;
+						N = 64/val;
+
+						
 						float ds = (abs(uv1[U] - uv3[U]))/(N*N);
 						float dt = (abs(uv1[V] - uv2[V]))/(N*N);
 						GzColor tempColor;
