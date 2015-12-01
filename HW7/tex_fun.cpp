@@ -10,8 +10,10 @@ GzColor	*image = NULL;
 GzColor *MipMap[10];
 int xs, ys;
 int reset = 1;
+short ctoi(float color);
 float length(GzCoord a);
 float fisqrt(float num);
+void GzFlushMipMap2File(FILE* outfile, GzColor *mipmap[10], int level, int xres, int yres);
 
 void tri_mm(GzColor *Image, int xs, int ys, int level)
 {
@@ -20,6 +22,18 @@ void tri_mm(GzColor *Image, int xs, int ys, int level)
 	{
 		MipMap[level] = (GzColor*)malloc(sizeof(GzColor)*(xs + 1)*(ys + 1));
 		MipMap[level] = Image;
+		char file[100] = "mipmapLevel";
+
+		char  buffer[10];
+		strcat(file, itoa(level, buffer, 10));
+		strcat(file, ".ppm");
+		FILE* outfile;
+		if ((outfile = fopen(file, "wb")) == NULL)
+		{
+			AfxMessageBox("The output file was not opened\n");
+		}
+		GzFlushMipMap2File(outfile, MipMap, level, xs, ys);
+		fclose(outfile);
 		tri_mm(MipMap[level], xs / 2, ys / 2, ++level);
 	}
 	else
@@ -89,16 +103,28 @@ void tri_mm(GzColor *Image, int xs, int ys, int level)
 					MipMap[level][i + (j*xs)][BLUE] = 0;
 				}*/
 
-				//fprintf(fd, "%f %f %f", MipMap[level][i + (j*xs)][RED], MipMap[level][i + (j*xs)][GREEN], MipMap[level][i + (j*xs)][BLUE]);
-				
+				//fprintf(fd, "%f %f %f", MipMap[level][i + (j*xs)][RED], MipMap[level][i + (j*xs)][GREEN], MipMap[level][i + (j*xs)][BLUE]);			
 			}
 		}
+
+		char file[100] = "mipmapLevel";
+
+		char  buffer[10];
+		strcat(file, itoa(level, buffer, 10));
+		strcat(file, ".ppm");
+		FILE* outfile;
+		if ((outfile = fopen(file, "wb")) == NULL)
+		{
+			AfxMessageBox("The output file was not opened\n");
+		}
+		GzFlushMipMap2File(outfile, MipMap, level, xs, ys);
+		fclose(outfile);
+
 		//fclose(fd);
 		if (xs == 1)
 			return;
 		tri_mm(MipMap[level], xs / 2, ys / 2, ++level);
 	}
-
 }
 
 /* Image texture function */
@@ -256,6 +282,26 @@ int ptex_fun(float u, float v, GzColor color)
 	color[BLUE] = colr * cos(u) + sin(8.8 * colr);
 
 	return GZ_SUCCESS;
+}
+
+void GzFlushMipMap2File(FILE* outfile, GzColor *mipmap[10], int level, int xres, int yres)
+{
+
+	/* HW1.8 write pixels to ppm file -- "P6 %d %d 255\n" */
+	fprintf(outfile, "P6 %d %d 255\n", xres, yres);
+
+	//Convert each pixel's information to bits to write to ppm
+	for (int i = 0; i < xres; i++){
+		for (int j = 0; j < yres; j++){
+			short colorR = ctoi(mipmap[level][j + (i*yres)][RED]);
+			short colorG = ctoi(mipmap[level][j + (i*yres)][GREEN]);
+			short colorB = ctoi(mipmap[level][j + (i*yres)][BLUE]);
+			char bitRed = colorR >> 4;
+			char bitGreen = colorG >> 4;
+			char bitBlue = colorB >> 4;
+			fprintf(outfile, "%c%c%c", bitRed, bitGreen, bitBlue);
+		}
+	}
 }
 
 /* Free texture memory */
